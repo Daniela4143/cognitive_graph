@@ -1,6 +1,6 @@
 import streamlit as st
 from extract import extract_cognitive_graph
-from database import init_db, save_entry, save_node, save_edge, save_gap
+from database import save_entry, save_node, save_edge, save_gap
 from graph import build_graph, render_graph
 import streamlit.components.v1 as components
 
@@ -37,9 +37,6 @@ def display_graph():
 
     # display the graph using components.html
     components.html(graph_html, height=600, scrolling=True)
-
-# Initialize the database first
-init_db()
 
 st.title("Cognitive Graph System")
 # markdown for instructions
