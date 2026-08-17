@@ -26,12 +26,15 @@ def get_edge_style(edge):
 
     return color, dashes
 
-def build_graph():
-    """Build the cognitive graph from the database."""
+def build_graph(nodes=None, edges=None):
+    """Build the cognitive graph. If nodes/edges are provided (e.g. demo-mode
+    session data), use those directly instead of querying the database."""
     cognitive_graph = nx.DiGraph()
 
-    nodes = get_all_nodes()
-    edges = get_all_edges()
+    if nodes is None:
+        nodes = get_all_nodes()
+    if edges is None:
+        edges = get_all_edges()
 
     for node in nodes:
         size, color = get_node_style(node)

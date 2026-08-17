@@ -1,12 +1,48 @@
 import streamlit as st
+import os
 from extract import extract_cognitive_graph
 from database import save_entry, save_node, save_edge, save_gap
 from graph import build_graph, render_graph
 import streamlit.components.v1 as components
 
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 def save_extraction_result(user_input, result):
     entry_id = save_entry(user_input, result.get("forward_question"))
 
+    if DEMO_MODE:
+        # data only stored in server memory for demo purposes, close the browser or refresh the page will lose the data
+        st.session_state.setdefault("demo_nodes", [])
+        st.session_state.setdefault("demo_edges", [])
+        st.session_state.setdefault("demo_next_id", 1)
+
+        node_id_map = {}
+        for node in result.get("nodes", []):
+            local_id = st.session_state.demo_next_id
+            st.session_state.demo_next_id += 1
+            st.session_state.demo_nodes.append({
+                "id": local_id,
+                "label": node["label"],
+                "domain": None,
+                "status": node["status"],
+                "activation_count": 1,
+            })
+            node_id_map[node["id"]] = local_id
+
+        for edge in result.get("edges", []):
+            source_id = node_id_map.get(edge["from"])
+            target_id = node_id_map.get(edge["to"])
+            if source_id and target_id:
+                st.session_state.demo_edges.append({
+                    "source_node_id": source_id,
+                    "target_node_id": target_id,
+                    "weight": edge["weight"],
+                    "reason": edge["reason"],
+                    "origin": "ai_extracted",
+                    "status": "forming",
+                })
+        return node_id_map
+    
     node_id_map = {}
     for node in result.get("nodes", []):
         db_id = save_node(node["label"], node["status"])
@@ -29,7 +65,12 @@ def save_extraction_result(user_input, result):
 def display_graph():
     # Build the cognitive graph
     st.subheader("Cognitive Graph Visualization")
-    cognitive_graph = build_graph()
+
+    if DEMO_MODE:
+        cognitive_graph = build_graph(st.session_state.get("demo_nodes", []), st.session_state.get("demo_edges", []))
+    else:
+        cognitive_graph = build_graph()
+
     graph_html_path = render_graph(cognitive_graph)
 
     with open(graph_html_path, 'r', encoding='utf-8') as f:
@@ -41,6 +82,9 @@ def display_graph():
 st.title("Cognitive Graph System")
 # markdown for instructions
 st.markdown("Enter your conversation text below and click 'Extract and Update Cognitive Graph', our system will extract cognitive nodes and connections automatically and save them to the database.")
+
+if DEMO_MODE:
+    st.info("This is for demo purposes only. Your input will only show during this session and will not be saved to the database.")
 
 # set height to 200 for better user experience
 user_input = st.text_area("What's on your mind?", height=200)
