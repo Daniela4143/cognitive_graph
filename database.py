@@ -18,11 +18,11 @@ def save_entry(raw_text, forward_question=None):
     )
     return response.data[0]["id"]
 
-def save_node(label, status, domain=None):
+def save_node(label, status, domain=None, embedding=None):
     """Save a new node to the nodes table. Returns the new node's id."""
     response = (
         supabase.table("nodes")
-        .insert({"label": label, "status": status, "domain": domain})
+        .insert({"label": label, "status": status, "domain": domain, "embedding": embedding})
         .execute()
     )
     return response.data[0]["id"]
@@ -55,6 +55,15 @@ def get_all_edges():
     response = supabase.table("edges").select("*").execute()
     return response.data
 
+def match_similar_nodes(embedding, match_count=5):
+    """Call the match_nodes SQL function to find the most semantically
+    similar existing nodes to the given embedding (pgvector cosine similarity)."""
+    response = supabase.rpc("match_nodes", {
+        "query_embedding": embedding,
+        "match_count": match_count
+    }).execute()
+    return response.data
+
 def get_recent_nodes():
     """Retrieve recent 20 active nodes to compare with the new extracted nodes."""
     response = (supabase.table("nodes")
@@ -65,4 +74,8 @@ def get_recent_nodes():
                 )
     return response.data
 
-
+if __name__ == "__main__":
+    from extract import get_embedding
+    real_embedding = get_embedding("拖延與逃避行為")
+    results = match_similar_nodes(real_embedding, match_count=3)
+    print("Most similar nodes:", results)

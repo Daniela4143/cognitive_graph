@@ -103,6 +103,7 @@ from google import genai
 import json
 from database import save_entry, save_node, save_edge, save_gap
 import time
+from google.genai import types
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -130,7 +131,21 @@ def extract_cognitive_graph(conversation_text):
     
     except Exception as e:
         raise Exception(f"API call failed: {str(e)}.")
-        
+
+def get_embedding(text):
+    try:
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text,
+            config=types.EmbedContentConfig(
+                task_type="SEMANTIC_SIMILARITY",
+                output_dimensionality=768
+            )
+        )
+        return result.embeddings[0].values
+    except Exception as e:
+        raise Exception(f"Embedding API call failed: {str(e)}.")
+    
 def compare_cognitive_nodes(node1, node2):
     try:
       start_time = time.time()
@@ -154,39 +169,40 @@ def compare_cognitive_nodes(node1, node2):
         raise Exception(f"API call failed: {str(e)}.")
     
 if __name__ == "__main__":
-    test_input = "但當時我並沒有覺得不划算，我覺得那時其實是我現在這些正在做的東西都還沒浮出水面，那時時間對我來說最大的意義就是去做剛才說的事，但現在時間最大的意義已經改變了，我覺得有點像沒主線跟有主線的差別，我前陣子的狀態就像是主線尚未解鎖，我就去把之前累積的支線做一做，但現在主線解鎖了，支線也變成像是循環任務般的存在（最大的獎勵已經領取過了），但這個主線又不是一時半會能完成的，所以我現在就有點像是領不到什麼高級獎勵但還是繼續做任務進度的玩家"
-    # test_input = "因為我們現在的方式是把要求降低的結果還不一定確定（像是要怎麼比對連結，怎麼樣才算再次激活），覺得有落差，好像跟原來的藍圖越來越遠的感覺，有種自己的能力好像沒辦法達成心目中想要的樣子，我不是因為狀態低才這樣想的，我覺得這是我在執行時常會有的感覺，原本設想的很美好，但在過程中因為種種原因調整原來的想法，一想到這可能會導致做出來的效果不如預期，就覺得就像在妥協，然後就覺得自己做的一切好像沒有甚麼意義，既然效果都變了，真的還有用嗎？會這麼想"
-    # extract
-    extraction_result = extract_cognitive_graph(test_input)
-    print(json.dumps(extraction_result, ensure_ascii=False, indent=2))
+    # test_input = "但當時我並沒有覺得不划算，我覺得那時其實是我現在這些正在做的東西都還沒浮出水面，那時時間對我來說最大的意義就是去做剛才說的事，但現在時間最大的意義已經改變了，我覺得有點像沒主線跟有主線的差別，我前陣子的狀態就像是主線尚未解鎖，我就去把之前累積的支線做一做，但現在主線解鎖了，支線也變成像是循環任務般的存在（最大的獎勵已經領取過了），但這個主線又不是一時半會能完成的，所以我現在就有點像是領不到什麼高級獎勵但還是繼續做任務進度的玩家"
+    # # extract
+    # extraction_result = extract_cognitive_graph(test_input)
+    # print(json.dumps(extraction_result, ensure_ascii=False, indent=2))
     
-    # save to database
-    entry_id = save_entry(test_input, extraction_result.get("forward_question"))
-    print(f"Saved entry with ID: {entry_id}")
+    # # save to database
+    # entry_id = save_entry(test_input, extraction_result.get("forward_question"))
+    # print(f"Saved entry with ID: {entry_id}")
 
-    # save nodes, remember to map every temporary node ID to the real database ID
-    node_id_map = {}
-    for node in extraction_result.get("nodes", []):
-        db_id = save_node(node["label"], node["status"])
-        node_id_map[node["id"]] = db_id
-        print(f"Saved node '{node['label']}' with DB ID: {db_id}")
+    # # save nodes, remember to map every temporary node ID to the real database ID
+    # node_id_map = {}
+    # for node in extraction_result.get("nodes", []):
+    #     db_id = save_node(node["label"], node["status"])
+    #     node_id_map[node["id"]] = db_id
+    #     print(f"Saved node '{node['label']}' with DB ID: {db_id}")
 
-    # save edges
-    for edge in extraction_result.get("edges", []):
-        source_db_id = node_id_map.get(edge["from"])
-        target_db_id = node_id_map.get(edge["to"])
-        if source_db_id and target_db_id:
-            save_edge(source_db_id, target_db_id, edge["weight"], edge["reason"])
-            print(f"Saved edge from DB ID {source_db_id} to DB ID {target_db_id} with weight {edge['weight']}")
-        else:
-            print(f"Error: Could not find DB IDs for edge from {edge['from']} to {edge['to']}")
+    # # save edges
+    # for edge in extraction_result.get("edges", []):
+    #     source_db_id = node_id_map.get(edge["from"])
+    #     target_db_id = node_id_map.get(edge["to"])
+    #     if source_db_id and target_db_id:
+    #         save_edge(source_db_id, target_db_id, edge["weight"], edge["reason"])
+    #         print(f"Saved edge from DB ID {source_db_id} to DB ID {target_db_id} with weight {edge['weight']}")
+    #     else:
+    #         print(f"Error: Could not find DB IDs for edge from {edge['from']} to {edge['to']}")
 
-    # save gaps
-    for gap in extraction_result.get("gaps", []):
-        node_temp_id = gap["node"]
-        node_db_id = node_id_map.get(node_temp_id)
-        if node_db_id:
-            save_gap(node_db_id, entry_id, gap["unfinished"])
-            print(f"Saved gap for node DB ID {node_db_id} with unfinished text: {gap['unfinished']}")
-        else:
-            print(f"Error: Could not find DB ID for gap node {gap['node']}")
+    # # save gaps
+    # for gap in extraction_result.get("gaps", []):
+    #     node_temp_id = gap["node"]
+    #     node_db_id = node_id_map.get(node_temp_id)
+    #     if node_db_id:
+    #         save_gap(node_db_id, entry_id, gap["unfinished"])
+    #         print(f"Saved gap for node DB ID {node_db_id} with unfinished text: {gap['unfinished']}")
+    #     else:
+    #         print(f"Error: Could not find DB ID for gap node {gap['node']}")
+  vec = get_embedding("測試用文字")
+  print(len(vec))

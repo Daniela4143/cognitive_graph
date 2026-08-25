@@ -1,9 +1,8 @@
 import streamlit as st
 import os
-from extract import extract_cognitive_graph
+from extract import extract_cognitive_graph, get_embedding
 from database import save_entry, save_node, save_edge, save_gap
 from graph import build_graph, render_graph
-import streamlit.components.v1 as components
 
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 
@@ -45,7 +44,8 @@ def save_extraction_result(user_input, result):
     
     node_id_map = {}
     for node in result.get("nodes", []):
-        db_id = save_node(node["label"], node["status"])
+        embedding = get_embedding(node["label"])
+        db_id = save_node(node["label"], node["status"], embedding=embedding)
         node_id_map[node["id"]] = db_id
 
     for edge in result.get("edges", []):
@@ -77,7 +77,7 @@ def display_graph():
         graph_html = f.read()
 
     # display the graph using components.html
-    components.html(graph_html, height=600, scrolling=True)
+    st.iframe(graph_html, height=600)
 
 st.title("Cognitive Graph System")
 # markdown for instructions
