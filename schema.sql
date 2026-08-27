@@ -77,3 +77,96 @@ AS $$
     ORDER BY embedding <=> query_embedding
     LIMIT match_count;
 $$;
+
+-- Atomic transaction helpers: save an entry + its nodes/edges/gaps in a
+-- single Postgres function call, so a failure partway through rolls back
+-- everything instead of leaving partial data. Added 2026-08-27.
+
+CREATE OR REPLACE FUNCTION insert_node(p_label text, p_status text, p_embedding vector)
+RETURNS int
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_id int;
+BEGIN
+    INSERT INTO nodes (label, status, embedding)
+    VALUES (p_label, p_status, p_embedding)
+    RETURNING id INTO v_id;
+    RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION insert_edge(p_source_id int, p_target_id int, p_weight real, p_reason text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO edges (source_node_id, target_node_id, weight, reason)
+    VALUES (p_source_id, p_target_id, p_weight, p_reason);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION insert_gap(p_node_id int, p_entry_id int, p_unfinished text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO gaps (node_id, entry_id, unfinished)
+    VALUES (p_node_id, p_entry_id, p_unfinished);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION save_extraction_result(
+    p_raw_text text,
+    p_forward_question text,
+    p_nodes jsonb,
+    p_edges jsonb,
+    p_gaps jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_entry_id int;
+    v_node jsonb;
+    v_edge jsonb;
+    v_gap jsonb;
+    v_new_id int;
+    v_id_map jsonb := '{}'::jsonb;
+BEGIN
+    INSERT INTO entries (raw_text, forward_question)
+    VALUES (p_raw_text, p_forward_question)
+    RETURNING id INTO v_entry_id;
+
+    FOR v_node IN SELECT * FROM jsonb_array_elements(p_nodes)
+    LOOP
+        v_new_id := insert_node(
+            v_node->>'label',
+            v_node->>'status',
+            (v_node->>'embedding')::vector
+        );
+        v_id_map := v_id_map || jsonb_build_object(v_node->>'temp_id', v_new_id);
+    END LOOP;
+
+    FOR v_edge IN SELECT * FROM jsonb_array_elements(p_edges)
+    LOOP
+        PERFORM insert_edge(
+            (v_id_map->>(v_edge->>'from'))::int,
+            (v_id_map->>(v_edge->>'to'))::int,
+            (v_edge->>'weight')::real,
+            v_edge->>'reason'
+        );
+    END LOOP;
+
+    FOR v_gap IN SELECT * FROM jsonb_array_elements(p_gaps)
+    LOOP
+        PERFORM insert_gap(
+            (v_id_map->>(v_gap->>'node'))::int,
+            v_entry_id,
+            v_gap->>'unfinished'
+        );
+    END LOOP;
+
+    RETURN jsonb_build_object('entry_id', v_entry_id, 'node_id_map', v_id_map);
+END;
+$$;

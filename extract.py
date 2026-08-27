@@ -104,6 +104,7 @@ import json
 from database import save_entry, save_node, save_edge, save_gap
 import time
 from google.genai import types
+from tenacity import retry, wait_exponential, stop_after_attempt
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -145,7 +146,8 @@ def get_embedding(text):
         return result.embeddings[0].values
     except Exception as e:
         raise Exception(f"Embedding API call failed: {str(e)}.")
-    
+
+@retry(wait=wait_exponential(multiplier=1, min=4, max=65), stop=stop_after_attempt(3))
 def compare_cognitive_nodes(node1, node2):
     try:
       start_time = time.time()

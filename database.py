@@ -36,7 +36,6 @@ def save_edge(source_id, target_id, weight, reason):
         "reason": reason
     }).execute()
     
-
 def save_gap(node_id, entry_id, unfinished):
     """Save a new gap to the gaps table."""
     supabase.table("gaps").insert({
@@ -53,6 +52,19 @@ def get_all_nodes():
 def get_all_edges():
     """Retrieve all edges from the edges table."""
     response = supabase.table("edges").select("*").execute()
+    return response.data
+
+def save_extraction_transaction(raw_text, forward_question, nodes, edges, gaps):
+    """Save an entry + its nodes/edges/gaps as a single atomic transaction
+    via the save_extraction_result Postgres function. Returns entry_id and
+    a map of temp node ids (e.g. 'N1') to real database ids."""
+    response = supabase.rpc("save_extraction_result", {
+        "p_raw_text": raw_text,
+        "p_forward_question": forward_question,
+        "p_nodes": nodes,
+        "p_edges": edges,
+        "p_gaps": gaps
+    }).execute()
     return response.data
 
 def match_similar_nodes(embedding, match_count=5):
@@ -73,6 +85,18 @@ def get_recent_nodes():
                 .execute()
                 )
     return response.data
+
+def save_semantic_edge(source_id, target_id, similarity, reason):
+    """Save an edge created from embedding + LLM semantic comparison,
+    connecting two nodes judged to represent the same underlying pattern."""
+    supabase.table("edges").insert({
+        "source_node_id": source_id, 
+        "target_node_id": target_id, 
+        "weight": similarity, 
+        "reason": reason,
+        "origin": "semantic_match",
+        "status": "forming"
+    }).execute()
 
 if __name__ == "__main__":
     from extract import get_embedding
