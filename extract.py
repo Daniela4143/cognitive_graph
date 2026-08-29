@@ -111,6 +111,16 @@ api_key = os.getenv("GEMINI_API_KEY")
 
 client = genai.Client(api_key=api_key)
 
+def log_usage(interaction, label=""):
+    """Print token usage info from a Gemini API response, for cost tracking"""
+    usage_info = {
+      "total_input_tokens": interaction.usage.total_input_tokens,
+      "total_output_tokens": interaction.usage.total_output_tokens,
+      "total_thought_tokens": interaction.usage.total_thought_tokens,
+      "total_tokens": interaction.usage.total_tokens
+    }
+    print(f"[{label}] Usage: {usage_info}")
+
 def extract_cognitive_graph(conversation_text):
     try:
       start_time = time.time()
@@ -120,6 +130,7 @@ def extract_cognitive_graph(conversation_text):
       )
       end_time = time.time()
       print(f"Extraction took {end_time - start_time:.2f} seconds.")
+      log_usage(interaction, label="Extraction")
 
       raw = interaction.output_text.strip()
 
@@ -143,6 +154,7 @@ def get_embedding(text):
                 output_dimensionality=768
             )
         )
+        # print(result.model_dump())  # print the entire response for debugging
         return result.embeddings[0].values
     except Exception as e:
         raise Exception(f"Embedding API call failed: {str(e)}.")
@@ -157,6 +169,7 @@ def compare_cognitive_nodes(node1, node2):
       )
       end_time = time.time()
       print(f"Comparison took {end_time - start_time:.2f} seconds.")
+      log_usage(interaction, label="Comparison")
 
       raw = interaction.output_text.strip()
 
