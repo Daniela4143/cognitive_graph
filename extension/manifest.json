@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "Cognitive Graph Extractor",
+    "version": "1.0.0",
+    "description": "Extract cognitive patterns from selected text",
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
+    ],
+    "permissions": ["activeTab", "scripting"]
+}
