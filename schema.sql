@@ -12,7 +12,7 @@ CREATE TABLE nodes (
     status TEXT,
     activation_count INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT now(),
-    last_activated_at TIMESTAMPTZ DEFAULT now()
+    last_activated_at TIMESTAMPTZ DEFAULT now(),
     embedding vector(768)  -- gemini-embedding-001, 768 dims, for semantic pre-filtering
 );
 
