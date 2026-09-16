@@ -66,27 +66,30 @@ Each extraction (entry + its nodes/edges/gaps) is saved as a single atomic trans
    SUPABASE_KEY=your_supabase_service_role_key
    ```
 3. Set up the database in your Supabase project by running `schema.sql` in the Supabase SQL Editor (creates tables, grants, and the pgvector matching/transaction functions).
+
+> **Note on deployment**: some of the pinned dependency versions in `requirements.txt` only resolve cleanly under Python 3.12. If deploying to a platform like Render, set a `PYTHON_VERSION` environment variable (e.g. `3.12.10`) alongside the three keys above, or the build may fail on dependency resolution.
 4. Run the web app:
    ```bash
    streamlit run app.py
    ```
 
-### Running the API + browser extension (optional)
+### Running the browser extension
 
-The browser extension talks to a local FastAPI server, so this needs to be running separately from the Streamlit app.
+The extension is already pointed at the live API (deployed on Render), so no local server is needed to use it.
 
-1. Start the API server:
-   ```bash
-   uvicorn api:app --reload
-   ```
-   By default it runs at `http://127.0.0.1:8000`.
-2. Load the extension in Chrome/Edge:
+1. Load the extension in Chrome/Edge:
    - Go to `chrome://extensions` (or `edge://extensions`)
    - Enable **Developer mode**
    - Click **Load unpacked** and select the `extension/` folder
-3. Select any text on a webpage, click the extension icon, and click **Extract**. The selected text is auto-filled into the popup; extraction results are saved through the same backend logic as the web app.
+2. Select any text on a webpage, click the extension icon, and click **Extract**. The selected text is auto-filled into the popup; extraction results are saved through the same backend logic as the web app.
 
-> Note: the extension currently points to `127.0.0.1:8000`, so the API server must be running locally for it to work.
+> If you edit any file under `extension/`, reload the extension from `chrome://extensions`, then refresh any webpage tab you're testing on — a loaded tab keeps talking to the old version of the extension until it's refreshed.
+
+If you'd rather run the API locally instead (e.g. for development), start it with:
+```bash
+uvicorn api:app --reload
+```
+and change the fetch URL in `extension/popup.js` to `http://127.0.0.1:8000/extract`.
 
 ## Demo mode
 
@@ -96,4 +99,6 @@ The hosted Streamlit demo runs with `DEMO_MODE=true`, which keeps all extracted 
 
 Work in progress — personal project and portfolio piece.
 
-Core pipeline (extraction → embedding → atomic transaction save → semantic matching → graph rendering) is built and has been tested across varied inputs (long-form transcripts, forum posts, multilingual text). The FastAPI backend and browser extension are functional locally; deployment for public use is the next step.
+Core pipeline (extraction → embedding → atomic transaction save → semantic matching → graph rendering) is built and has been tested across varied inputs (long-form transcripts, forum posts, multilingual text). The FastAPI backend is deployed (Render) and the browser extension calls it live end-to-end.
+
+Known limitation: the extension's popup UI doesn't persist state — closing or unfocusing it while extraction is in progress loses the on-screen result, though the extraction itself still completes and saves to the database. Not yet fixed; tracked as a future improvement.

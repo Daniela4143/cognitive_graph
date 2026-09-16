@@ -14,7 +14,10 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
 
     resultDiv.textContent = "Processing...(This may take a few seconds)";
 
-    const response = await fetch("http://127.0.0.1:8000/extract", {
+    // local server for testing
+    // const response = await fetch("http://127.0.0.1:8000/extract", {
+    // remote server for production
+    const response = await fetch("https://cognitive-graph-api.onrender.com/extract", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
