@@ -3,6 +3,7 @@ import os
 from extract import extract_cognitive_graph
 from graph import build_graph, render_graph
 from services import process_extraction
+import streamlit.components.v1 as components
 
 """
 RUN CMD: streamlit run app.py
@@ -60,44 +61,47 @@ def display_graph():
         graph_html = f.read()
 
     # display the graph using components.html
-    st.iframe(graph_html, height=600)
+    components.html(graph_html, height=600, scrolling=True)
 
-st.title("Cognitive Graph System")
-# markdown for instructions
-st.markdown("Enter your conversation text below and click 'Extract and Update Cognitive Graph', our system will extract cognitive nodes and connections automatically and save them to the database.")
+if __name__ == "__main__":
+    # must be the first streamlit command
+    st.set_page_config(page_title="Cognitive Graph System", layout="wide")
 
-if DEMO_MODE:
-    st.info("This is for demo purposes only. Your input will only show during this session and will not be saved to the database.")
+    # markdown for instructions
+    st.markdown("Enter your conversation text below and click 'Extract and Update Cognitive Graph', our system will extract cognitive nodes and connections automatically and save them to the database.")
 
-# set height to 200 for better user experience
-user_input = st.text_area("What's on your mind?", height=200)
+    if DEMO_MODE:
+        st.info("This is for demo purposes only. Your input will only show during this session and will not be saved to the database.")
 
-# click button first then deal with the logic of action
-if st.button("Extract and Update Cognitive Graph"):
-    # add strip() to avoid blank input
-    if user_input.strip() == "":
-        st.warning("Please enter some text first.")
-    else:
-        # add a spinner to indicate processing
-        try:
-            with st.spinner("Extracting cognitive graph..."):
-                result = extract_cognitive_graph(user_input)
-        except Exception as e:
-            st.error(f"Error during extraction: {str(e)}")
-            st.stop()
+    # set height to 200 for better user experience
+    user_input = st.text_area("What's on your mind?", height=200)
 
-        node_id_map = save_extraction_result(user_input, result)
-        
-        st.success("Cognitive graph extracted and updated.")
+    # click button first then deal with the logic of action
+    if st.button("Extract and Update Cognitive Graph"):
+        # add strip() to avoid blank input
+        if user_input.strip() == "":
+            st.warning("Please enter some text first.")
+        else:
+            # add a spinner to indicate processing
+            try:
+                with st.spinner("Extracting cognitive graph..."):
+                    result = extract_cognitive_graph(user_input)
+            except Exception as e:
+                st.error(f"Error during extraction: {str(e)}")
+                st.stop()
 
-        display_graph()
+            node_id_map = save_extraction_result(user_input, result)
+            
+            st.success("Cognitive graph extracted and updated.")
 
-        # add a subheader to display the result in a structured format
-        st.subheader("Extraction Result")
-        st.json(result)
+            display_graph()
 
-        # display the forward question if it exists
-        if result.get("forward_question"):
-            st.subheader(" Question worth exploring")
-            # use st.info to display the forward question in a highlighted box
-            st.info(result.get("forward_question"))
+            # add a subheader to display the result in a structured format
+            st.subheader("Extraction Result")
+            st.json(result)
+
+            # display the forward question if it exists
+            if result.get("forward_question"):
+                st.subheader(" Question worth exploring")
+                # use st.info to display the forward question in a highlighted box
+                st.info(result.get("forward_question"))

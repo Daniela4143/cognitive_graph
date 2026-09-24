@@ -1,4 +1,4 @@
-from extract import get_embedding, compare_cognitive_nodes
+from extract import get_embedding, get_embedding_batch, compare_cognitive_nodes
 from database import match_similar_nodes, save_extraction_transaction, save_semantic_edge
 
 def process_extraction(user_input, result):
@@ -19,8 +19,20 @@ def process_extraction(user_input, result):
     #     "embedding": "not_a_valid_vector"   # 故意塞一個不合法的向量格式
     # })
     
-    for node in result.get("nodes", []):
-        embedding = get_embedding(node["label"])
+    # for node in result.get("nodes", []):
+    #     # get embedding one by one
+    #     embedding = get_embedding(node["label"])
+    #     embeddings_by_temp_id[node["id"]] = embedding
+    #     nodes_payload.append({
+    #         "temp_id": node["id"],
+    #         "label": node["label"],
+    #         "status": node["status"],
+    #         "embedding": embedding
+    #     })
+
+    labels = [node["label"] for node in result.get("nodes", [])]
+    embeddings = get_embedding_batch(labels) if labels else []
+    for node, embedding in zip(result.get("nodes", []), embeddings):
         embeddings_by_temp_id[node["id"]] = embedding
         nodes_payload.append({
             "temp_id": node["id"],
@@ -28,7 +40,7 @@ def process_extraction(user_input, result):
             "status": node["status"],
             "embedding": embedding
         })
-
+        
     edges_payload = [
         {
             "from": e["from"],

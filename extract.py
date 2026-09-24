@@ -144,6 +144,7 @@ def extract_cognitive_graph(conversation_text):
     except Exception as e:
         raise Exception(f"API call failed: {str(e)}.")
 
+# used in services.py to get embeddings for nodes and compare them
 def get_embedding(text):
     try:
         result = client.models.embed_content(
@@ -156,6 +157,22 @@ def get_embedding(text):
         )
         # print(result.model_dump())  # print the entire response for debugging
         return result.embeddings[0].values
+    except Exception as e:
+        raise Exception(f"Embedding API call failed: {str(e)}.")
+
+# used in services.py to get embeddings for multiple nodes at once
+def get_embedding_batch(texts):
+    try:
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=texts,
+            config=types.EmbedContentConfig(
+                task_type="SEMANTIC_SIMILARITY",
+                output_dimensionality=768
+            )
+        )
+        # print(result.model_dump())  # print the entire response for debugging
+        return [embedding.values for embedding in result.embeddings]
     except Exception as e:
         raise Exception(f"Embedding API call failed: {str(e)}.")
 
@@ -219,5 +236,7 @@ if __name__ == "__main__":
     #         print(f"Saved gap for node DB ID {node_db_id} with unfinished text: {gap['unfinished']}")
     #     else:
     #         print(f"Error: Could not find DB ID for gap node {gap['node']}")
-  vec = get_embedding("測試用文字")
-  print(len(vec))
+  
+  # vec = get_embedding("測試用文字")
+  vec = get_embedding_batch(["測試用文字", "另一段測試文字"])
+  print(type(vec), len(vec), len(vec[0]), vec[0][:10])  # print type, number of embeddings, dimension of first embedding, and first 10 values
