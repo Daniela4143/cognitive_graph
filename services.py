@@ -1,7 +1,7 @@
 from extract import get_embedding, get_embedding_batch, compare_cognitive_nodes
 from database import match_similar_nodes, save_extraction_transaction, save_semantic_edge
 
-def process_extraction(user_input, result):
+def process_extraction(user_input, result, reaction_type=None, reaction_note=None):
     """
     save the extraction result into database, and do semantic matching after transaction
     Used in api.py, app.py
@@ -65,7 +65,9 @@ def process_extraction(user_input, result):
         result.get("forward_question"),
         nodes_payload,
         edges_payload,
-        gaps_payload
+        gaps_payload,
+        reaction_type=reaction_type,
+        reaction_note=reaction_note
     )
 
     node_id_map = tx_result.get("node_id_map", {})

@@ -20,7 +20,9 @@ CREATE TABLE entries (
     id SERIAL PRIMARY KEY,
     raw_text TEXT NOT NULL,
     forward_question TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now(),
+    reaction_type TEXT,     -- 'resonate' / 'repel' / 'curious' / 'other' / NULL
+    reaction_reason TEXT    -- optional explanation for the reaction, nullable
 );
 
 CREATE TABLE edges (

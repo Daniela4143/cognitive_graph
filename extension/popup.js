@@ -8,9 +8,27 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 });
 
+// Show/hide the "otherNote" input field based on the selected radio button
+document.querySelectorAll('input[name="reaction"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+        var otherNote = document.getElementById("otherNote");
+        if (this.value === 'other') {
+            otherNote.style.display = 'block';
+        } else {
+            otherNote.style.display = 'none';
+        }
+    });
+});
+
+// Button click event listener for the "Extract" button
 document.getElementById("extractBtn").addEventListener("click", async () => {
     const text = document.getElementById("inputText").value;
     const resultDiv = document.getElementById("result");
+
+    // Get the selected reaction type and optional note
+    var selectedReaction = document.querySelector('input[name="reaction"]:checked');
+    var reactionType = selectedReaction ? selectedReaction.value : null;
+    var reactionNote = document.getElementById("otherNote").value.trim() || null;
 
     resultDiv.textContent = "Processing...(This may take a few seconds)";
 
@@ -22,7 +40,11 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ text: text })
+        body: JSON.stringify({ 
+            text: text,
+            reaction_type: reactionType,
+            reaction_note: reactionNote
+        })
     });
 
     const data = await response.json();

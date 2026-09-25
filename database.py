@@ -8,11 +8,11 @@ supabase = create_client(
     os.getenv("SUPABASE_KEY")
 )
 
-def save_entry(raw_text, forward_question=None):
+def save_entry(raw_text, forward_question=None, reaction_type=None, reaction_note=None):
     """Save a new entry to the entries table. Returns the new entry's id."""
     response = (
         supabase.table("entries")
-        .insert({"raw_text": raw_text, "forward_question": forward_question})
+        .insert({"raw_text": raw_text, "forward_question": forward_question, "reaction_type": reaction_type, "reaction_note": reaction_note})
         .execute()
     )
     return response.data[0]["id"]
@@ -53,16 +53,18 @@ def get_all_edges():
     response = supabase.table("edges").select("*").execute()
     return response.data
 
-def save_extraction_transaction(raw_text, forward_question, nodes, edges, gaps):
+def save_extraction_transaction(raw_text, forward_question, nodes, edges, gaps, reaction_type=None, reaction_note=None):
     """Save an entry + its nodes/edges/gaps as a single atomic transaction
     via the save_extraction_result Postgres function. Returns entry_id and
     a map of temp node ids (e.g. 'N1') to real database ids."""
-    response = supabase.rpc("save_extraction_result", {
+    response = supabase.rpc("save_extraction_result", { 
         "p_raw_text": raw_text,
         "p_forward_question": forward_question,
         "p_nodes": nodes,
         "p_edges": edges,
-        "p_gaps": gaps
+        "p_gaps": gaps,
+        "p_reaction_type": reaction_type,
+        "p_reaction_note": reaction_note
     }).execute()
     return response.data
 
