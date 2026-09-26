@@ -12,6 +12,8 @@ RUN CMD: uvicorn api:app --reload
 
 class ExtractRequest(BaseModel):
     text: str   
+    reaction_type: str | None = None
+    reaction_note: str | None = None
 
 app = FastAPI() 
 
@@ -29,7 +31,12 @@ async def root():
 @app.post("/extract")   # post: client 端向 server 端發送資料
 async def extract(request: ExtractRequest): # 使用自定義class, 檢驗傳入的資料型別
     result = extract_cognitive_graph(request.text)
-    node_id_map = process_extraction(request.text, result)
+    node_id_map = process_extraction(
+        request.text, 
+        result, 
+        reaction_type=request.reaction_type,
+        reaction_note=request.reaction_note
+    )
 
     return {
         "status": "success",
